@@ -13,6 +13,7 @@ models/**/*.pth
 models/**/*.pt
 models/**/*.Tensorflow
 dist/
+Downloads/
 __pycache__/
 *.pyc
 .venv/
