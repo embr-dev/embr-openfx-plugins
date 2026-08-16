@@ -2,53 +2,61 @@
 
 Linux 向け OpenFX プラグイン集（社内検証用）。
 
-## 利用者向け（知識不要）
+OFX 標準パス: **`/usr/OFX/Plugins`**  
+データ: **`/opt/Embr/<Product>/`**
+
+---
+
+## EmbrSAM2
+
+マスク生成（点／箱プロンプト）。
 
 ```bash
-unzip EmbrSAM2-linux-x86_64-*.zip
-cd EmbrSAM2-linux-x86_64-*
-./install.sh    # sudo が必要
+./install.sh   # ZIP内。配置: /usr/OFX/Plugins + /opt/Embr/EmbrSAM2
 ```
 
-### 正しいインストール先
+## EmbrMatAnyone2
+
+マスク → 柔らかいマット（SAM2 などと別ノード）。
+
+```bash
+# ビルド
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
+./build/plugins/matanyone2/matanyone2_engine_smoke
+./scripts/package_matanyone2_installer_linux.sh
+
+# インストール
+unzip EmbrMatAnyone2-linux-x86_64-*.zip && cd EmbrMatAnyone2-linux-x86_64-*
+./install.sh
+```
 
 | 内容 | パス |
 |------|------|
-| OFX プラグイン | `/usr/OFX/Plugins/EmbrSAM2.ofx.bundle` |
-| モデル・設定 | `/opt/Embr/EmbrSAM2/` |
+| OFX | `/usr/OFX/Plugins/EmbrMatAnyone2.ofx.bundle` |
+| Data | `/opt/Embr/EmbrMatAnyone2/` |
 
-Linux の OFX 標準検索パスは **`/usr/OFX/Plugins`** です（`~/OFX/Plugins` では Flame / Resolve に出ません）。  
-Flame は `/usr/OFX/Plugins` にプラグインが無いと OpenFX ノード自体が出ないことがあります。
+### 推奨配線
 
-詳しくは ZIP 内の `使い方.txt`。
-
-### ZIP を作る（開発者）
-
-```bash
-./scripts/download_onnxruntime_linux.sh
-./scripts/download_sam2_models.sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
-./scripts/package_installer_linux.sh
-# → dist/EmbrSAM2-linux-x86_64-0.1.1.zip
+```text
+[Source] ──┐
+           ├─ EmbrMatAnyone2 → alpha / foreground
+[EmbrSAM2 / Roto Mask] ─┘
 ```
 
-## EmbrSAM2（Linux）
+### 現状（MatAnyone2 v0.1）
 
-- ホスト: Flame / Resolve / Natron（Linux x86_64）
-- 推論: ONNX Runtime（バンドル同梱）
-- モデル未配置時: demo mode
+- OFX の入出力・デモ軟化マット・時間ブレンドが動作
+- 公式神経モデル（`matanyone2.pth`）の **OFX 内推論は未接続**（状態付き PyTorch）
+- 本番品質のオフライン推論: `scripts/run_matanyone2_offline.py`
+- 重み取得: `./scripts/download_matanyone2_weights.sh` → インストーラー同梱可
 
-### パラメータ
+### 次の実装予定
 
-| 項目 | 内容 |
-|------|------|
-| Encoder/Decoder ONNX | デフォルト `/opt/Embr/EmbrSAM2/models/sam2/*.onnx` |
-| Device | auto / cuda / cpu |
-| Use Box / Point | 正規化 0..1 プロンプト |
-| Output | Alpha / Mask RGB / Foreground |
+- MatAnyone2 の ONNX / LibTorch バックエンドを OFX Engine に接続
 
-### ライセンス
+---
+
+## ライセンス
 
 - プラグイン骨格: LICENSE
-- SAM2 重み: Meta SAM 2 / 配布元に従う
-- ONNX Runtime: Microsoft に従う
+- SAM2 / MatAnyone2 重み: 各上流ライセンスに従う

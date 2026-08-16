@@ -1,0 +1,4 @@
+MatAnyone2 checkpoint
+Source: https://github.com/pq-yang/MatAnyone2/releases/download/v1.0.0/matanyone2.pth
+Upstream: https://github.com/pq-yang/MatAnyone2
+License: see upstream (NTU S-Lab / project terms)
