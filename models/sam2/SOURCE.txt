@@ -1,0 +1,7 @@
+SAM2 ONNX models for EmbrSAM2
+------------------------------
+Source repo : https://huggingface.co/vietanhdev/segment-anything-2-onnx-models
+Files       : sam2_hiera_tiny.encoder.onnx, sam2_hiera_tiny.decoder.onnx
+Saved as    : image_encoder.onnx, image_decoder.onnx
+Size preset : tiny
+Upstream    : Meta SAM 2 (Apache-2.0) — https://github.com/facebookresearch/sam2
