@@ -1,0 +1,30 @@
+EmbrMatAnyone2 使い方（Linux）
+==============================
+
+■ 役割
+SAM2 などで作った初フレーム／マスクを受け取り、柔らかいマット（alpha）を出します。
+EmbrSAM2 とは別プラグインです。
+
+  [Source] ─┐
+            ├─ EmbrMatAnyone2 → alpha / foreground
+  [Mask]   ─┘   （EmbrSAM2 やロトのマスク）
+
+■ インストール
+  ./install.sh    # sudo 必須
+配置:
+  OFX : /usr/OFX/Plugins/EmbrMatAnyone2.ofx.bundle
+  Data: /opt/Embr/EmbrMatAnyone2/
+
+■ 現状（v0.1）
+- OFX 入出力・時間方向のデモ軟化マットが動作
+- 公式 MatAnyone2 の神経推論（.pth）は OFX 内未接続
+  （メモリ付き PyTorch モデルのため。次段で ONNX/LibTorch 化予定）
+- matanyone2.pth を models/ に置いても今は demo のまま（検出のみ）
+
+■ パラメータ
+- Erode / Dilate / Edge Softness / Temporal Blend
+- Output: Source+Alpha / Matte RGB / Foreground
+- Reset Sequence: 時間状態クリア
+
+■ アンインストール
+  /opt/Embr/EmbrMatAnyone2/bin/uninstall.sh
