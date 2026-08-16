@@ -36,9 +36,9 @@ constexpr const char* kParamMaskThreshold = "maskThreshold";
 constexpr const char* kParamOutputMode = "outputMode";
 constexpr const char* kParamReload = "reloadModels";
 
-// Installer default layout: ~/EmbrSAM2/models/sam2/...
-constexpr const char* kDefaultEncoderPath = "~/EmbrSAM2/models/sam2/image_encoder.onnx";
-constexpr const char* kDefaultDecoderPath = "~/EmbrSAM2/models/sam2/image_decoder.onnx";
+// Installer default layout: /opt/Embr/EmbrSAM2/models/sam2/...
+constexpr const char* kDefaultEncoderPath = "/opt/Embr/EmbrSAM2/models/sam2/image_encoder.onnx";
+constexpr const char* kDefaultDecoderPath = "/opt/Embr/EmbrSAM2/models/sam2/image_decoder.onnx";
 
 std::string expandUserPath(std::string path) {
   if (path.empty()) return path;
@@ -46,7 +46,8 @@ std::string expandUserPath(std::string path) {
   const char* home = std::getenv("HOME");
   const char* embrRoot = std::getenv("EMBR_SAM2_HOME");
   std::string homeDir = home ? home : "";
-  std::string rootDir = embrRoot ? embrRoot : (homeDir.empty() ? std::string() : homeDir + "/EmbrSAM2");
+  // Prefer explicit env, else the system install prefix used by install.sh
+  std::string rootDir = embrRoot ? embrRoot : "/opt/Embr/EmbrSAM2";
 
   if (!rootDir.empty()) {
     const std::string marker = "$EMBR_SAM2_HOME";

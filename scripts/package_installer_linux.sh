@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD="${BUILD_DIR:-$ROOT/build}"
 DIST="${DIST_DIR:-$ROOT/dist}"
-VER="${EMBR_SAM2_VERSION:-0.1.0}"
+VER="${EMBR_SAM2_VERSION:-0.1.1}"
 STAGE="${DIST}/EmbrSAM2-linux-x86_64-${VER}"
 ZIP="${DIST}/EmbrSAM2-linux-x86_64-${VER}.zip"
 
