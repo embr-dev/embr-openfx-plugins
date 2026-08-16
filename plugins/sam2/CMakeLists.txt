@@ -14,37 +14,49 @@ target_include_directories(EmbrSAM2
 
 target_link_libraries(EmbrSAM2 PRIVATE onnxruntime_sdk)
 
-# Help the host process resolve libonnxruntime.so at runtime.
+# Resolve libonnxruntime.so from the same directory as EmbrSAM2.ofx ($ORIGIN).
 set_target_properties(EmbrSAM2 PROPERTIES
   PREFIX ""
   SUFFIX ".ofx"
   OUTPUT_NAME "EmbrSAM2"
-  BUILD_RPATH "${ONNXRUNTIME_ROOT}/lib"
-  INSTALL_RPATH "${ONNXRUNTIME_ROOT}/lib"
+  BUILD_RPATH "\$ORIGIN"
+  INSTALL_RPATH "\$ORIGIN"
 )
 
 if(UNIX AND NOT APPLE)
   target_link_libraries(EmbrSAM2 PRIVATE dl pthread)
 endif()
 
-# Optional CUDA compile definition when GPU ORT is detected.
 if(EMBR_SAM2_USE_CUDA AND EXISTS "${ONNXRUNTIME_ROOT}/lib/libonnxruntime_providers_cuda.so")
   target_compile_definitions(EmbrSAM2 PRIVATE EMBR_SAM2_HAS_CUDA=1)
   message(STATUS "SAM2: enabling CUDA execution provider")
 endif()
 
-# Package as OFX bundle for Linux hosts (Flame/Resolve/Natron).
 set(OFX_BUNDLE_DIR "${CMAKE_BINARY_DIR}/ofx/EmbrSAM2.ofx.bundle/Contents")
+set(OFX_BUNDLE_BIN "${OFX_BUNDLE_DIR}/Linux-x86-64")
+
+file(GLOB ORT_RUNTIME_LIBS
+  "${ONNXRUNTIME_ROOT}/lib/libonnxruntime.so"
+  "${ONNXRUNTIME_ROOT}/lib/libonnxruntime.so.*"
+  "${ONNXRUNTIME_ROOT}/lib/libonnxruntime_providers_*.so"
+)
+
+set(_ort_copy_cmds)
+foreach(_lib IN LISTS ORT_RUNTIME_LIBS)
+  list(APPEND _ort_copy_cmds
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_lib}" "${OFX_BUNDLE_BIN}/")
+endforeach()
+
 add_custom_command(TARGET EmbrSAM2 POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory "${OFX_BUNDLE_DIR}/Linux-x86-64"
-  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:EmbrSAM2> "${OFX_BUNDLE_DIR}/Linux-x86-64/EmbrSAM2.ofx"
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${OFX_BUNDLE_BIN}"
+  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:EmbrSAM2> "${OFX_BUNDLE_BIN}/EmbrSAM2.ofx"
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
           "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist"
           "${OFX_BUNDLE_DIR}/Info.plist"
-  COMMENT "Packaging EmbrSAM2.ofx.bundle"
+  ${_ort_copy_cmds}
+  COMMENT "Packaging EmbrSAM2.ofx.bundle with ONNX Runtime libs"
 )
 
-# Host-free smoke test for the inference engine (demo mode).
 add_executable(sam2_engine_smoke src/sam2_engine_smoke.cpp src/Sam2Engine.cpp)
 target_include_directories(sam2_engine_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(sam2_engine_smoke PRIVATE onnxruntime_sdk)

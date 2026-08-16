@@ -1,0 +1,53 @@
+EmbrSAM2 使い方（Linux）
+========================
+
+■ インストール（これだけ）
+1. このZIPを Linux にコピーする
+2. 展開する（例）
+     unzip EmbrSAM2-linux-*.zip
+     cd EmbrSAM2-linux-*
+3. 次を実行する
+     ./install.sh
+4. Flame / DaVinci Resolve などを再起動する
+
+■ どこに入るか
+- プラグイン:
+    ~/OFX/Plugins/EmbrSAM2.ofx.bundle
+- モデル・設定:
+    ~/EmbrSAM2/models/sam2/
+- 環境ファイル:
+    ~/EmbrSAM2/env.sh
+
+■ ホストでの使い方
+1. エフェクト / OFX から「Embr」→「EmbrSAM2」を選ぶ
+2. 初期状態では点・箱の位置で楕円マスク（demo）が出ることもある
+3. 本番モデルを置くと自動で SAM2 推論になる
+
+プラグインのデフォルトパス（変更不要な想定）:
+  ~/EmbrSAM2/models/sam2/image_encoder.onnx
+  ~/EmbrSAM2/models/sam2/image_decoder.onnx
+
+■ モデルの置き方（本番推論）
+次の2ファイルをコピーするだけです:
+
+  ~/EmbrSAM2/models/sam2/image_encoder.onnx
+  ~/EmbrSAM2/models/sam2/image_decoder.onnx
+
+置いたあと、EmbrSAM2 の「Reload Models」を押すか、
+ノードを作り直してください。
+
+■ アンインストール
+  ~/EmbrSAM2/bin/uninstall.sh
+または展開フォルダの
+  ./uninstall.sh
+
+■ うまく出ないとき
+- ホストを再起動したか
+- ~/OFX/Plugins/EmbrSAM2.ofx.bundle があるか
+- Flame など独自パスの場合は、OFX_PLUGIN_DIR を指定して再インストール:
+    OFX_PLUGIN_DIR=/path/to/OFX/Plugins ./install.sh
+
+■ 注意
+- 対応: Linux x86_64
+- ONNX Runtime のライブラリはプラグインと同じフォルダに同梱済みです
+- SAM2 モデル自体のライセンスは Meta / 配布元の条件に従ってください

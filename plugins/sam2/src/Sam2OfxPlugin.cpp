@@ -1,6 +1,7 @@
 #include "Sam2Engine.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <memory>
 #include <string>
 #include <vector>
@@ -34,6 +35,30 @@ constexpr const char* kParamPointLabel = "pointLabel";
 constexpr const char* kParamMaskThreshold = "maskThreshold";
 constexpr const char* kParamOutputMode = "outputMode";
 constexpr const char* kParamReload = "reloadModels";
+
+// Installer default layout: ~/EmbrSAM2/models/sam2/...
+constexpr const char* kDefaultEncoderPath = "~/EmbrSAM2/models/sam2/image_encoder.onnx";
+constexpr const char* kDefaultDecoderPath = "~/EmbrSAM2/models/sam2/image_decoder.onnx";
+
+std::string expandUserPath(std::string path) {
+  if (path.empty()) return path;
+
+  const char* home = std::getenv("HOME");
+  const char* embrRoot = std::getenv("EMBR_SAM2_HOME");
+  std::string homeDir = home ? home : "";
+  std::string rootDir = embrRoot ? embrRoot : (homeDir.empty() ? std::string() : homeDir + "/EmbrSAM2");
+
+  if (!rootDir.empty()) {
+    const std::string marker = "$EMBR_SAM2_HOME";
+    if (path.rfind(marker, 0) == 0) {
+      path.replace(0, marker.size(), rootDir);
+    }
+  }
+  if (!homeDir.empty() && !path.empty() && path[0] == '~') {
+    path.replace(0, 1, homeDir);
+  }
+  return path;
+}
 
 enum OutputModeEnum {
   eOutputMaskAsAlpha = 0,
@@ -223,6 +248,8 @@ class Sam2Plugin : public OFX::ImageEffect {
     embr::Sam2EngineConfig cfg;
     _encoderPath->getValue(cfg.encoderPath);
     _decoderPath->getValue(cfg.decoderPath);
+    cfg.encoderPath = expandUserPath(cfg.encoderPath);
+    cfg.decoderPath = expandUserPath(cfg.decoderPath);
     int deviceChoice = 0;
     _device->getValue(deviceChoice);
     cfg.device = (deviceChoice == 1) ? "cuda" : (deviceChoice == 2) ? "cpu" : "auto";
@@ -292,14 +319,14 @@ class Sam2PluginFactory : public OFX::PluginFactoryHelper<Sam2PluginFactory> {
       OFX::StringParamDescriptor* param = desc.defineStringParam(kParamEncoderPath);
       param->setLabels("Encoder ONNX", "Encoder", "Encoder");
       param->setStringType(OFX::eStringTypeFilePath);
-      param->setDefault("models/sam2/image_encoder.onnx");
+      param->setDefault(kDefaultEncoderPath);
       page->addChild(*param);
     }
     {
       OFX::StringParamDescriptor* param = desc.defineStringParam(kParamDecoderPath);
       param->setLabels("Decoder ONNX", "Decoder", "Decoder");
       param->setStringType(OFX::eStringTypeFilePath);
-      param->setDefault("models/sam2/image_decoder.onnx");
+      param->setDefault(kDefaultDecoderPath);
       page->addChild(*param);
     }
     {
