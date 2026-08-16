@@ -45,7 +45,14 @@ fi
 if [[ -f "${ROOT}/models/sam2/image_decoder.onnx" ]]; then
   cp -f "${ROOT}/models/sam2/image_decoder.onnx" "${STAGE}/models/sam2/"
 fi
+if [[ -f "${ROOT}/models/sam2/SOURCE.txt" ]]; then
+  cp -f "${ROOT}/models/sam2/SOURCE.txt" "${STAGE}/models/sam2/"
+fi
 
+if [[ ! -f "${STAGE}/models/sam2/image_encoder.onnx" || ! -f "${STAGE}/models/sam2/image_decoder.onnx" ]]; then
+  echo "警告: ONNX モデルが同梱されていません。"
+  echo "  先に実行: ./scripts/download_sam2_models.sh"
+fi
 chmod +x "${STAGE}/install.sh" "${STAGE}/uninstall.sh"
 
 # LICENSE

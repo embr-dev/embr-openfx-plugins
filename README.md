@@ -18,9 +18,10 @@ cd EmbrSAM2-linux-x86_64-0.1.0
 
 ```bash
 ./scripts/download_onnxruntime_linux.sh
+./scripts/download_sam2_models.sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
 ./scripts/package_installer_linux.sh
-# → dist/EmbrSAM2-linux-x86_64-0.1.0.zip
+# → dist/EmbrSAM2-linux-x86_64-0.1.0.zip（モデル同梱）
 ```
 
 ## EmbrSAM2（Linux）

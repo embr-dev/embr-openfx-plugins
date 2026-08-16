@@ -4,8 +4,8 @@ EmbrSAM2 使い方（Linux）
 ■ インストール（これだけ）
 1. このZIPを Linux にコピーする
 2. 展開する（例）
-     unzip EmbrSAM2-linux-*.zip
-     cd EmbrSAM2-linux-*
+     unzip EmbrSAM2-linux-x86_64-0.1.0.zip
+     cd EmbrSAM2-linux-x86_64-0.1.0
 3. 次を実行する
      ./install.sh
 4. Flame / DaVinci Resolve などを再起動する
@@ -13,28 +13,28 @@ EmbrSAM2 使い方（Linux）
 ■ どこに入るか
 - プラグイン:
     ~/OFX/Plugins/EmbrSAM2.ofx.bundle
-- モデル・設定:
-    ~/EmbrSAM2/models/sam2/
+- モデル（このZIPに同梱済み）:
+    ~/EmbrSAM2/models/sam2/image_encoder.onnx
+    ~/EmbrSAM2/models/sam2/image_decoder.onnx
 - 環境ファイル:
     ~/EmbrSAM2/env.sh
 
 ■ ホストでの使い方
 1. エフェクト / OFX から「Embr」→「EmbrSAM2」を選ぶ
-2. 初期状態では点・箱の位置で楕円マスク（demo）が出ることもある
-3. 本番モデルを置くと自動で SAM2 推論になる
+2. Use Box や Point で対象を指定する
+3. 出力モードで Mask / Foreground などを選ぶ
 
-プラグインのデフォルトパス（変更不要な想定）:
+プラグインのデフォルトパス（通常は変更不要）:
   ~/EmbrSAM2/models/sam2/image_encoder.onnx
   ~/EmbrSAM2/models/sam2/image_decoder.onnx
 
-■ モデルの置き方（本番推論）
-次の2ファイルをコピーするだけです:
+■ 同梱モデル
+- SAM2 Hiera Tiny（ONNX）
+- 出典: https://huggingface.co/vietanhdev/segment-anything-2-onnx-models
+- 元モデル: Meta SAM 2（Apache-2.0）
 
-  ~/EmbrSAM2/models/sam2/image_encoder.onnx
-  ~/EmbrSAM2/models/sam2/image_decoder.onnx
-
-置いたあと、EmbrSAM2 の「Reload Models」を押すか、
-ノードを作り直してください。
+より大きなモデルに差し替える場合は、同名ファイルを上書きし
+「Reload Models」を押してください。
 
 ■ アンインストール
   ~/EmbrSAM2/bin/uninstall.sh
@@ -44,10 +44,10 @@ EmbrSAM2 使い方（Linux）
 ■ うまく出ないとき
 - ホストを再起動したか
 - ~/OFX/Plugins/EmbrSAM2.ofx.bundle があるか
-- Flame など独自パスの場合は、OFX_PLUGIN_DIR を指定して再インストール:
+- Flame など独自パスの場合:
     OFX_PLUGIN_DIR=/path/to/OFX/Plugins ./install.sh
 
 ■ 注意
 - 対応: Linux x86_64
-- ONNX Runtime のライブラリはプラグインと同じフォルダに同梱済みです
-- SAM2 モデル自体のライセンスは Meta / 配布元の条件に従ってください
+- ONNX Runtime はプラグインと同じフォルダに同梱済みです
+- モデル利用は Meta SAM 2 / 配布元のライセンスに従ってください
