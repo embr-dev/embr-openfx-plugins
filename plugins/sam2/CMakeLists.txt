@@ -14,11 +14,13 @@ target_include_directories(EmbrSAM2
 
 target_link_libraries(EmbrSAM2 PRIVATE onnxruntime_sdk)
 
-# OpenFX plugins are named *.ofx
+# Help the host process resolve libonnxruntime.so at runtime.
 set_target_properties(EmbrSAM2 PROPERTIES
   PREFIX ""
   SUFFIX ".ofx"
   OUTPUT_NAME "EmbrSAM2"
+  BUILD_RPATH "${ONNXRUNTIME_ROOT}/lib"
+  INSTALL_RPATH "${ONNXRUNTIME_ROOT}/lib"
 )
 
 if(UNIX AND NOT APPLE)
