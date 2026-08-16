@@ -44,6 +44,7 @@ chmod +x scripts/download_onnxruntime_linux.sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j"$(nproc)"
 ./build/plugins/sam2/sam2_engine_smoke
+./scripts/download_sam2_models.sh
 ./scripts/package_installer_linux.sh
 ```
 
