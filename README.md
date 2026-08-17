@@ -17,23 +17,28 @@ OFX 標準パス: **`/usr/OFX/Plugins`**
 
 ## EmbrMatAnyone2
 
-マスク → 柔らかいマット（SAM2 などと別ノード）。
+マスク → 柔らかいマット（SAM2 などと別ノード）。公式 `matanyone2.pth` による本推論対応。
 
 ```bash
+# 依存
+./scripts/download_matanyone2_weights.sh
+git clone --depth 1 https://github.com/pq-yang/MatAnyone2.git third_party/MatAnyone2
+
 # ビルド
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
 ./build/plugins/matanyone2/matanyone2_engine_smoke
+./build/plugins/matanyone2/matanyone2_neural_smoke   # venv + weights 必要
 ./scripts/package_matanyone2_installer_linux.sh
 
 # インストール
 unzip EmbrMatAnyone2-linux-x86_64-*.zip && cd EmbrMatAnyone2-linux-x86_64-*
-./install.sh
+./install.sh   # OFX + models + Python worker + venv
 ```
 
 | 内容 | パス |
 |------|------|
 | OFX | `/usr/OFX/Plugins/EmbrMatAnyone2.ofx.bundle` |
-| Data | `/opt/Embr/EmbrMatAnyone2/` |
+| Data | `/opt/Embr/EmbrMatAnyone2/`（models / python / src / venv） |
 
 ### 推奨配線
 
@@ -43,16 +48,12 @@ unzip EmbrMatAnyone2-linux-x86_64-*.zip && cd EmbrMatAnyone2-linux-x86_64-*
 [EmbrSAM2 / Roto Mask] ─┘
 ```
 
-### 現状（MatAnyone2 v0.1）
+### 現状（MatAnyone2 v0.1.1）
 
-- OFX の入出力・デモ軟化マット・時間ブレンドが動作
-- 公式神経モデル（`matanyone2.pth`）の **OFX 内推論は未接続**（状態付き PyTorch）
-- 本番品質のオフライン推論: `scripts/run_matanyone2_offline.py`
-- 重み取得: `./scripts/download_matanyone2_weights.sh` → インストーラー同梱可
-
-### 次の実装予定
-
-- MatAnyone2 の ONNX / LibTorch バックエンドを OFX Engine に接続
+- Prefer Neural=ON かつ model + venv + src が揃うと **公式本推論**
+- 欠けている場合は demo soft-matte にフォールバック
+- Mask はシード用（初回／Reset 後）。常時接続でも毎フレーム再シードしない
+- オフライン CLI: `scripts/run_matanyone2_offline.py`
 
 ---
 

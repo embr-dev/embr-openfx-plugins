@@ -15,24 +15,34 @@ namespace {
 constexpr const char* kPluginName = "EmbrMatAnyone2";
 constexpr const char* kPluginGrouping = "Embr";
 constexpr const char* kPluginDescription =
-    "MatAnyone2-style video matting (Linux OFX). "
-    "Source + Mask -> soft alpha / foreground. "
-    "Current build uses demo soft-matte; neural backend is next.";
+    "MatAnyone2 video matting (Linux OFX). Source + Mask -> soft alpha / foreground. "
+    "Uses official matanyone2.pth via Python worker when installed; otherwise demo soft-matte.";
 constexpr const char* kPluginIdentifier = "jp.embr.ofx.MatAnyone2";
 constexpr unsigned int kPluginVersionMajor = 0;
-constexpr unsigned int kPluginVersionMinor = 1;
+constexpr unsigned int kPluginVersionMinor = 2;
 
 constexpr const char* kClipMask = "Mask";
 constexpr const char* kParamModelPath = "modelPath";
+constexpr const char* kParamPythonExe = "pythonExe";
+constexpr const char* kParamWorkerScript = "workerScript";
+constexpr const char* kParamSrcRoot = "srcRoot";
+constexpr const char* kParamDevice = "device";
 constexpr const char* kParamErode = "erode";
 constexpr const char* kParamDilate = "dilate";
+constexpr const char* kParamWarmup = "warmup";
+constexpr const char* kParamMaxSize = "maxSize";
 constexpr const char* kParamSoftness = "edgeSoftness";
 constexpr const char* kParamTemporal = "temporalBlend";
+constexpr const char* kParamPreferNeural = "preferNeural";
 constexpr const char* kParamOutputMode = "outputMode";
 constexpr const char* kParamReset = "resetSequence";
 constexpr const char* kParamReload = "reload";
 
+constexpr const char* kDefaultHome = "/opt/Embr/EmbrMatAnyone2";
 constexpr const char* kDefaultModelPath = "/opt/Embr/EmbrMatAnyone2/models/matanyone2.pth";
+constexpr const char* kDefaultPython = "/opt/Embr/EmbrMatAnyone2/venv/bin/python";
+constexpr const char* kDefaultWorker = "/opt/Embr/EmbrMatAnyone2/python/matanyone2_worker.py";
+constexpr const char* kDefaultSrc = "/opt/Embr/EmbrMatAnyone2/src/MatAnyone2";
 
 enum OutputModeEnum {
   eOutputMaskAsAlpha = 0,
@@ -40,11 +50,15 @@ enum OutputModeEnum {
   eOutputForeground
 };
 
+std::string productHome() {
+  const char* rootEnv = std::getenv("EMBR_MATANYONE2_HOME");
+  return rootEnv ? rootEnv : kDefaultHome;
+}
+
 std::string expandUserPath(std::string path) {
   if (path.empty()) return path;
   const char* home = std::getenv("HOME");
-  const char* rootEnv = std::getenv("EMBR_MATANYONE2_HOME");
-  const std::string root = rootEnv ? rootEnv : "/opt/Embr/EmbrMatAnyone2";
+  const std::string root = productHome();
   if (path.rfind("$EMBR_MATANYONE2_HOME", 0) == 0) {
     path.replace(0, std::string("$EMBR_MATANYONE2_HOME").size(), root);
   }
@@ -119,10 +133,17 @@ class MatAnyonePlugin : public OFX::ImageEffect {
     _maskClip = fetchClip(kClipMask);
 
     _modelPath = fetchStringParam(kParamModelPath);
+    _pythonExe = fetchStringParam(kParamPythonExe);
+    _workerScript = fetchStringParam(kParamWorkerScript);
+    _srcRoot = fetchStringParam(kParamSrcRoot);
+    _device = fetchStringParam(kParamDevice);
     _erode = fetchIntParam(kParamErode);
     _dilate = fetchIntParam(kParamDilate);
+    _warmup = fetchIntParam(kParamWarmup);
+    _maxSize = fetchIntParam(kParamMaxSize);
     _softness = fetchDoubleParam(kParamSoftness);
     _temporal = fetchDoubleParam(kParamTemporal);
+    _preferNeural = fetchBooleanParam(kParamPreferNeural);
     _outputMode = fetchChoiceParam(kParamOutputMode);
     _reset = fetchPushButtonParam(kParamReset);
     _reload = fetchPushButtonParam(kParamReload);
@@ -172,7 +193,6 @@ class MatAnyonePlugin : public OFX::ImageEffect {
             const float* p = static_cast<const float*>(mimg->getPixelAddress(sx, sy));
             float v = 0.f;
             if (p) {
-              // Use alpha if present, else luminance
               v = (p[3] > 1e-6f) ? p[3] : (0.2126f * p[0] + 0.7152f * p[1] + 0.0722f * p[2]);
             }
             mask[static_cast<size_t>(y) * width + x] = v;
@@ -204,7 +224,9 @@ class MatAnyonePlugin : public OFX::ImageEffect {
   }
 
   void changedParam(const OFX::InstanceChangedArgs&, const std::string& name) override {
-    if (name == kParamReload || name == kParamModelPath) {
+    if (name == kParamReload || name == kParamModelPath || name == kParamPythonExe ||
+        name == kParamWorkerScript || name == kParamSrcRoot || name == kParamDevice ||
+        name == kParamPreferNeural || name == kParamWarmup || name == kParamMaxSize) {
       _loaded = false;
     }
     if (name == kParamReset) {
@@ -217,17 +239,32 @@ class MatAnyonePlugin : public OFX::ImageEffect {
     if (_loaded) return;
     embr::MatAnyoneEngineConfig cfg;
     _modelPath->getValue(cfg.modelPath);
+    _pythonExe->getValue(cfg.pythonExe);
+    _workerScript->getValue(cfg.workerScript);
+    _srcRoot->getValue(cfg.srcRoot);
+    _device->getValue(cfg.device);
     cfg.modelPath = expandUserPath(cfg.modelPath);
-    int erode = 10, dilate = 10;
-    double soft = 2.0, temporal = 0.35;
+    cfg.pythonExe = expandUserPath(cfg.pythonExe);
+    cfg.workerScript = expandUserPath(cfg.workerScript);
+    cfg.srcRoot = expandUserPath(cfg.srcRoot);
+
+    int erode = 10, dilate = 10, warmup = 10, maxSize = -1;
+    double soft = 2.0, temporal = 0.0;
+    bool prefer = true;
     _erode->getValue(erode);
     _dilate->getValue(dilate);
+    _warmup->getValue(warmup);
+    _maxSize->getValue(maxSize);
     _softness->getValue(soft);
     _temporal->getValue(temporal);
+    _preferNeural->getValue(prefer);
     cfg.erode = erode;
     cfg.dilate = dilate;
+    cfg.warmup = warmup;
+    cfg.maxSize = maxSize;
     cfg.edgeSoftness = static_cast<float>(soft);
     cfg.temporalBlend = static_cast<float>(temporal);
+    cfg.preferNeural = prefer;
     _engine.load(cfg);
     _loaded = true;
   }
@@ -236,10 +273,17 @@ class MatAnyonePlugin : public OFX::ImageEffect {
   OFX::Clip* _srcClip = nullptr;
   OFX::Clip* _maskClip = nullptr;
   OFX::StringParam* _modelPath = nullptr;
+  OFX::StringParam* _pythonExe = nullptr;
+  OFX::StringParam* _workerScript = nullptr;
+  OFX::StringParam* _srcRoot = nullptr;
+  OFX::StringParam* _device = nullptr;
   OFX::IntParam* _erode = nullptr;
   OFX::IntParam* _dilate = nullptr;
+  OFX::IntParam* _warmup = nullptr;
+  OFX::IntParam* _maxSize = nullptr;
   OFX::DoubleParam* _softness = nullptr;
   OFX::DoubleParam* _temporal = nullptr;
+  OFX::BooleanParam* _preferNeural = nullptr;
   OFX::ChoiceParam* _outputMode = nullptr;
   OFX::PushButtonParam* _reset = nullptr;
   OFX::PushButtonParam* _reload = nullptr;
@@ -287,7 +331,44 @@ class MatAnyonePluginFactory : public OFX::PluginFactoryHelper<MatAnyonePluginFa
       p->setLabels("Model (.pth)", "Model", "Model");
       p->setStringType(OFX::eStringTypeFilePath);
       p->setDefault(kDefaultModelPath);
-      p->setHint("Official matanyone2.pth (neural OFX backend pending; demo works without it)");
+      p->setHint("Official matanyone2.pth");
+      page->addChild(*p);
+    }
+    {
+      auto* p = desc.defineStringParam(kParamPythonExe);
+      p->setLabels("Python (venv)", "Python", "Python");
+      p->setStringType(OFX::eStringTypeFilePath);
+      p->setDefault(kDefaultPython);
+      p->setHint("venv python with torch + MatAnyone2 deps");
+      page->addChild(*p);
+    }
+    {
+      auto* p = desc.defineStringParam(kParamWorkerScript);
+      p->setLabels("Worker script", "Worker", "Worker");
+      p->setStringType(OFX::eStringTypeFilePath);
+      p->setDefault(kDefaultWorker);
+      page->addChild(*p);
+    }
+    {
+      auto* p = desc.defineStringParam(kParamSrcRoot);
+      p->setLabels("MatAnyone2 src", "Src", "Src");
+      p->setStringType(OFX::eStringTypeFilePath);
+      p->setDefault(kDefaultSrc);
+      p->setHint("Directory containing matanyone2/ package");
+      page->addChild(*p);
+    }
+    {
+      auto* p = desc.defineStringParam(kParamDevice);
+      p->setLabels("Device", "Device", "Device");
+      p->setDefault("auto");
+      p->setHint("auto | cpu | cuda | cuda:0");
+      page->addChild(*p);
+    }
+    {
+      auto* p = desc.defineBooleanParam(kParamPreferNeural);
+      p->setLabels("Prefer Neural", "Neural", "Neural");
+      p->setDefault(true);
+      p->setHint("Use official MatAnyone2 when model/venv/src are present");
       page->addChild(*p);
     }
     {
@@ -307,8 +388,26 @@ class MatAnyonePluginFactory : public OFX::PluginFactoryHelper<MatAnyonePluginFa
       page->addChild(*p);
     }
     {
+      auto* p = desc.defineIntParam(kParamWarmup);
+      p->setLabels("Warmup frames", "Warmup", "Warmup");
+      p->setDefault(10);
+      p->setRange(0, 64);
+      p->setDisplayRange(0, 32);
+      p->setHint("Official n_warmup; first-frame prediction frames before temporal memory");
+      page->addChild(*p);
+    }
+    {
+      auto* p = desc.defineIntParam(kParamMaxSize);
+      p->setLabels("Max internal size", "MaxSize", "MaxSize");
+      p->setDefault(-1);
+      p->setRange(-1, 2048);
+      p->setDisplayRange(-1, 1024);
+      p->setHint("-1 = no downscale; otherwise min(w,h) limit");
+      page->addChild(*p);
+    }
+    {
       auto* p = desc.defineDoubleParam(kParamSoftness);
-      p->setLabels("Edge Softness", "Softness", "Softness");
+      p->setLabels("Edge Softness (demo)", "Softness", "Softness");
       p->setDefault(2.0);
       p->setRange(0.0, 16.0);
       p->setDisplayRange(0.0, 8.0);
@@ -316,8 +415,8 @@ class MatAnyonePluginFactory : public OFX::PluginFactoryHelper<MatAnyonePluginFa
     }
     {
       auto* p = desc.defineDoubleParam(kParamTemporal);
-      p->setLabels("Temporal Blend", "Temporal", "Temporal");
-      p->setDefault(0.35);
+      p->setLabels("Temporal Blend (demo)", "Temporal", "Temporal");
+      p->setDefault(0.0);
       p->setRange(0.0, 0.95);
       p->setDisplayRange(0.0, 0.95);
       page->addChild(*p);

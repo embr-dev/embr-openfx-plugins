@@ -1,5 +1,6 @@
 set(MAT_SOURCES
   src/MatAnyoneEngine.cpp
+  src/MatAnyoneNeuralBackend.cpp
   src/MatAnyoneOfxPlugin.cpp
 )
 
@@ -36,5 +37,22 @@ add_custom_command(TARGET EmbrMatAnyone2 POST_BUILD
   COMMENT "Packaging EmbrMatAnyone2.ofx.bundle"
 )
 
-add_executable(matanyone2_engine_smoke src/matanyone2_engine_smoke.cpp src/MatAnyoneEngine.cpp)
+add_executable(matanyone2_engine_smoke
+  src/matanyone2_engine_smoke.cpp
+  src/MatAnyoneEngine.cpp
+  src/MatAnyoneNeuralBackend.cpp
+)
 target_include_directories(matanyone2_engine_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+if(UNIX AND NOT APPLE)
+  target_link_libraries(matanyone2_engine_smoke PRIVATE pthread)
+endif()
+
+add_executable(matanyone2_neural_smoke
+  src/matanyone2_neural_smoke.cpp
+  src/MatAnyoneEngine.cpp
+  src/MatAnyoneNeuralBackend.cpp
+)
+target_include_directories(matanyone2_neural_smoke PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+if(UNIX AND NOT APPLE)
+  target_link_libraries(matanyone2_neural_smoke PRIVATE pthread)
+endif()

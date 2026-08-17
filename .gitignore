@@ -8,6 +8,8 @@ cmake-build-*/
 *.ofx.bundle/
 third_party/onnxruntime/
 third_party/openfx/
+third_party/MatAnyone2/
+.venv-matanyone/
 models/**/*.onnx
 models/**/*.pth
 models/**/*.pt

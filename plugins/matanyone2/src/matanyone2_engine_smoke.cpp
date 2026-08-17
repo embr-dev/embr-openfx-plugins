@@ -6,6 +6,7 @@
 int main() {
   embr::MatAnyoneEngine engine;
   embr::MatAnyoneEngineConfig cfg;
+  cfg.preferNeural = false;  // demo-only smoke
   if (!engine.load(cfg) || !engine.isReady()) {
     std::cerr << "load failed\n";
     return 1;
