@@ -1,0 +1,41 @@
+EmbrMatAnyone2 使い方（Linux）
+==============================
+
+■ 役割
+SAM2 などで作った初フレーム／マスクを受け取り、柔らかいマット（alpha）を出します。
+EmbrSAM2 とは別プラグインです。
+
+  [Source] ─┐
+            ├─ EmbrMatAnyone2 → alpha / foreground
+  [Mask]   ─┘   （EmbrSAM2 やロトのマスク）
+
+■ インストール
+  ./install.sh    # sudo 必須（venv 作成でネットも必要）
+配置:
+  OFX : /usr/OFX/Plugins/EmbrMatAnyone2.ofx.bundle
+  Data: /opt/Embr/EmbrMatAnyone2/
+        models/matanyone2.pth
+        python/matanyone2_worker.py
+        src/MatAnyone2/
+        venv/
+
+■ 本推論（v0.1.1+）
+- Prefer Neural=ON（既定）かつ以下が揃うと公式 MatAnyone2 (.pth) で推論:
+  - models/matanyone2.pth
+  - venv/bin/python（install.sh が作成）
+  - src/MatAnyone2 + python/matanyone2_worker.py
+- 欠けている場合は demo soft-matte にフォールバック
+- Mask はシーケンスのシード用（初回、または Reset 後）。常時接続しても毎フレーム再シードしません
+- Device: auto / cpu / cuda
+- Warmup: 公式 n_warmup（既定 10）
+- CUDA で入れたい場合: EMBR_TORCH_INDEX=https://download.pytorch.org/whl/cu124 ./install.sh
+
+■ パラメータ
+- Model / Python / Worker / Src / Device / Prefer Neural
+- Erode / Dilate / Warmup / Max internal size
+- Edge Softness / Temporal Blend（demo 時のみ）
+- Output: Source+Alpha / Matte RGB / Foreground
+- Reset Sequence: 時間状態クリア（再シードが必要）
+
+■ アンインストール
+  /opt/Embr/EmbrMatAnyone2/bin/uninstall.sh
